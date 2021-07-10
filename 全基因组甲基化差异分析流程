@@ -1,0 +1,37 @@
+#全基因组甲基化差异分析流程
+
+#李春晖 2021/7/9
+
+#关于DNA甲基化的相关知识，想要了解的话可以自行进行查阅，这里不做过多的描述
+
+#DNA甲基化数据处理所使用的软件是Bismark
+/public/home/lichunhui/software/Bismark/Bismark-0.23.0/bismark
+
+#下载好软件，安装好依赖软件后，可以直接使用
+
+#开始分析流程
+
+#step1
+#新建一个文件夹，在新建文件夹下把甲基化数据和要分析的物种基因组文件链接过来（ln -s）
+mkdir Bismark
+cd Bismark
+mkdir 00.data 00.genome
+#把甲基化数据链接到00.data文件夹下,把基因组fasta文件链接到00.genome下
+
+#step2
+#首先要对甲基化数据进行质控过滤，使用的软件是fastp，参数选择-n 0，其他参数设置看具体的脚本文件
+#直接运行01.filter.py，会得到01.filter.py.sh文件
+mkdir -p 01.filter
+python3 01.filter.py
+#如果要质控的数据有点多，建议加入pbs语句投递到后台去跑，可以节省时间
+#质控后的数据都在01.filter文件夹下，可以打开.json文件查看质控情况
+
+#step3
+#bismark首先要对基因组构建索引
+bismark_genome_preparation 00.genome
+#运行bismark，进行比对,只要是会提交到后台去跑的任务，都是比较耗时的
+python3 02.bismark.py
+perl build_pbs.pl --in 02.bismark.py.sh --outdir 02.bismark.py.sh.pbs --jobname bismark --nodes [] --cpu 60 --maxnum []
+for i in 02.bismark.py.sh.pbs/*; do qsub $i;done
+
+#
